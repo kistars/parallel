@@ -19,15 +19,15 @@ if __name__ == "__main__":
     # Read graph and generate rdd containing node and outgoing edges 
     # from file containing edges
     graph_rdd = lines.map(eval)\
-		             .groupByKey()\
-		             .mapValues(list)\
+                     .groupByKey()\
+                     .mapValues(list)\
                  .partitionBy(args.N)\
-		             .cache()
+                     .cache()
 
     # Discover all nodes; this finds node with no outgoing edges as well	
     nodes = graph_rdd.flatMap(lambda (i, edgelist): edgelist + [i])\
-	                   .distinct()\
-		                 .cache()
+                       .distinct()\
+                         .cache()
  
     
 
@@ -39,22 +39,23 @@ if __name__ == "__main__":
     i = 0
     err = args.eps + 1.0
     while i < args.max_iterations and err > args.eps:
-	      i += 1
-	      old_scores = scores
-	      joined = graph_rdd.join(scores)
-	      scores = joined.values()\
-			  .flatMap(lambda (neighborlist, score): [(x, 1.0*score / len(neighborlist))  for x in neighborlist])\
-			  .reduceByKey(lambda x, y: x + y, numPartitions = args.N)\
-			  .mapValues(lambda x: (1 - args.gamma) * x + args.gamma*1 / size)\
-			  .cache()
+          i += 1
+          old_scores = scores
+          joined = graph_rdd.join(scores)
+          scores = joined.values()\
+              .flatMap(lambda (neighborlist, score): [(x, 1.0*score / len(neighborlist))  for x in neighborlist])\
+              .reduceByKey(lambda x, y: x + y, numPartitions = args.N)\
+              .mapValues(lambda x: (1 - args.gamma) * x + args.gamma*1 / size)\
+              .cache()
         
-        err = old_scores.join(scores).values()\
-                    .map(lambda (old_val,new_val): abs(old_val-new_val))\
-		                .reduce(lambda x,y:x+y)
+        err = old_scores.join(scores)\
+            .values()\
+            .map(lambda (old_val, new_val): abs(old_val-new_val))\
+            .reduce(lambda x,y:x+y)
 
-	      old_scores.unpersist() # Free the memory
+        old_scores.unpersist() # Free the memory
         
-        print '### Iteration:', i, '\terror:', err 
+        print ('### Iteration:', i, '\terror:', err )
  
     # Give score to nodes having no incoming edges. All such nodes
     # should get score gamma / size
